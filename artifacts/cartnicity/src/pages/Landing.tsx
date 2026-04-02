@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { 
   Users, 
@@ -5,14 +6,14 @@ import {
   MapPin, 
   Truck, 
   ShieldCheck, 
-  ShoppingBag, 
   ArrowRight,
   ChevronRight,
   Star,
-  Quote
+  Quote,
+  X
 } from "lucide-react";
-import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import logoFull from "@assets/logo_2_1775132861869.png";
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -29,18 +30,120 @@ const staggerContainer = {
   }
 };
 
+const JOIN_FORM_ID = "4f7a987a-0a4a-4e5f-bc06-2c79b7e14c94";
+const START_FORM_ID = "6f322199-c192-4f19-bfc0-365e1491331c";
+const PORTAL_ID = "148134075";
+
+function HubSpotFormModal({
+  open,
+  onClose,
+  formId,
+  title
+}: {
+  open: boolean;
+  onClose: () => void;
+  formId: string;
+  title: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open || !containerRef.current) return;
+
+    containerRef.current.innerHTML = "";
+
+    const div = document.createElement("div");
+    div.className = "hs-form-frame";
+    div.setAttribute("data-region", "eu1");
+    div.setAttribute("data-form-id", formId);
+    div.setAttribute("data-portal-id", PORTAL_ID);
+    containerRef.current.appendChild(div);
+
+    const existingScript = document.querySelector(
+      `script[src="https://js-eu1.hsforms.net/forms/embed/${PORTAL_ID}.js"]`
+    );
+    if (existingScript) {
+      existingScript.dispatchEvent(new Event("load"));
+    }
+  }, [open, formId]);
+
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ duration: 0.25 }}
+        className="relative z-10 bg-background rounded-3xl shadow-2xl border w-full max-w-xl max-h-[90vh] overflow-y-auto p-8"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <img src={logoFull} alt="Cartnicity" className="h-10 object-contain" />
+          </div>
+          <button
+            onClick={onClose}
+            className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
+            aria-label="Close"
+            data-testid="btn-close-modal"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <h2 className="text-2xl font-display font-bold mb-2">{title}</h2>
+        <p className="text-muted-foreground mb-6 text-sm">Fill out the form below and we'll be in touch shortly.</p>
+        <div ref={containerRef} className="min-h-[300px]" />
+      </motion.div>
+    </div>
+  );
+}
+
 export default function Landing() {
   const { scrollYProgress } = useScroll();
   const yHero = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
 
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [startOpen, setStartOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden font-sans">
+      {/* Modals */}
+      <HubSpotFormModal
+        open={joinOpen}
+        onClose={() => setJoinOpen(false)}
+        formId={JOIN_FORM_ID}
+        title="Join the Next Sweep"
+      />
+      <HubSpotFormModal
+        open={startOpen}
+        onClose={() => setStartOpen(false)}
+        formId={START_FORM_ID}
+        title="Start the Next Sweep"
+      />
+
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="w-8 h-8 text-primary" />
-            <span className="font-display font-bold text-2xl tracking-tight text-primary">Cartnicity</span>
+          <div className="flex items-center">
+            <img src={logoFull} alt="Cartnicity" className="h-14 object-contain" data-testid="nav-logo" />
           </div>
           <div className="hidden md:flex items-center gap-8">
             <a href="#how-it-works" className="text-sm font-medium hover:text-primary transition-colors">How it Works</a>
@@ -49,8 +152,12 @@ export default function Landing() {
             <a href="#farmers" className="text-sm font-medium hover:text-primary transition-colors">Farmers</a>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" className="hidden sm:inline-flex" data-testid="btn-login">Log In</Button>
-            <Button data-testid="btn-join-nav">Join the Next Sweep</Button>
+            <Button
+              data-testid="btn-join-nav"
+              onClick={() => setJoinOpen(true)}
+            >
+              Join the Next Sweep
+            </Button>
           </div>
         </div>
       </nav>
@@ -91,10 +198,21 @@ export default function Landing() {
             </motion.p>
             
             <motion.div variants={fadeIn} className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button size="lg" className="w-full sm:w-auto text-lg h-14 px-8 rounded-full shadow-lg hover-elevate" data-testid="btn-hero-join">
+              <Button
+                size="lg"
+                className="w-full sm:w-auto text-lg h-14 px-8 rounded-full shadow-lg hover-elevate"
+                data-testid="btn-hero-join"
+                onClick={() => setJoinOpen(true)}
+              >
                 Join the Next Sweep <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
-              <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg h-14 px-8 rounded-full border-2 hover-elevate" data-testid="btn-hero-start">
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full sm:w-auto text-lg h-14 px-8 rounded-full border-2 hover-elevate"
+                data-testid="btn-hero-start"
+                onClick={() => setStartOpen(true)}
+              >
                 Start a Bloc — Get $50
               </Button>
             </motion.div>
@@ -182,7 +300,14 @@ export default function Landing() {
               <h2 className="text-4xl md:text-5xl font-display font-bold mb-6">Communities pulling their weight</h2>
               <p className="text-lg text-muted-foreground">Real groups aggregating demand and taking back control of their grocery bills.</p>
             </div>
-            <Button variant="outline" className="rounded-full" data-testid="btn-view-cities">View All Active Blocs <ArrowRight className="ml-2 w-4 h-4" /></Button>
+            <Button
+              variant="outline"
+              className="rounded-full"
+              data-testid="btn-view-cities"
+              onClick={() => setJoinOpen(true)}
+            >
+              View All Active Blocs <ArrowRight className="ml-2 w-4 h-4" />
+            </Button>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -198,7 +323,9 @@ export default function Landing() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className={`p-8 rounded-3xl ${bloc.color} flex flex-col justify-between aspect-square hover-elevate`}
+                className={`p-8 rounded-3xl ${bloc.color} flex flex-col justify-between aspect-square hover-elevate cursor-pointer`}
+                onClick={() => setJoinOpen(true)}
+                data-testid={`card-community-${i}`}
               >
                 <div>
                   <MapPin className="w-6 h-6 mb-4 opacity-80" />
@@ -275,7 +402,16 @@ export default function Landing() {
               </div>
 
               <div className="mt-10">
-                <Button size="lg" className="rounded-full" data-testid="btn-view-products">Explore Products</Button>
+                <a
+                  href="https://superlative-creponne-d7c509.netlify.app/product"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="btn-view-products"
+                >
+                  <Button size="lg" className="rounded-full">
+                    Explore Products <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </a>
               </div>
             </div>
           </div>
@@ -283,7 +419,7 @@ export default function Landing() {
       </section>
 
       {/* Why Cartnicity */}
-      <section className="py-24 md:py-32 bg-secondary text-secondary-foreground">
+      <section id="farmers" className="py-24 md:py-32 bg-secondary text-secondary-foreground">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16 md:mb-24">
             <h2 className="text-4xl md:text-5xl font-display font-bold mb-6">A movement, not a marketplace.</h2>
@@ -323,12 +459,12 @@ export default function Landing() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { name: "Emeka Obi", loc: "Mississauga", text: "We used to spend $1,200 a month on groceries. With the local Bloc, we're down to $850 for better quality meat." },
-              { name: "David Lee", loc: "Etobicoke", text: "The quality of the brisket and ribs is incredible. You can tell it's coming straight from the farm." },
-              { name: "Sarah Chen", loc: "Toronto", text: "Finally, a platform that understands how our community cooks and eats. The savings are just the bonus." },
-              { name: "Nicole Adams", loc: "Calgary", text: "Started my own Bloc in our neighborhood. The $50 voucher was nice, but bringing everyone together was better." }
+              { name: "Emeka Obi", loc: "Mississauga, ON", text: "We used to spend $1,200 a month on groceries. With the local Bloc, we're down to $850 for better quality meat." },
+              { name: "David Lee", loc: "Etobicoke, ON", text: "The quality of the brisket and ribs is incredible. You can tell it's coming straight from the farm." },
+              { name: "Sarah Chen", loc: "Toronto, ON", text: "Finally, a platform that understands how our community cooks and eats. The savings are just the bonus." },
+              { name: "Nicole Adams", loc: "Calgary, AB", text: "Started my own Bloc in our neighborhood. The $50 voucher was nice, but bringing everyone together was better." }
             ].map((review, i) => (
-              <div key={i} className="p-6 rounded-3xl bg-muted/50 border hover-elevate transition-all">
+              <div key={i} className="p-6 rounded-3xl bg-muted/50 border hover-elevate transition-all" data-testid={`card-testimonial-${i}`}>
                 <div className="flex text-accent mb-4">
                   {[...Array(5)].map((_, j) => <Star key={j} className="w-4 h-4 fill-current" />)}
                 </div>
@@ -360,10 +496,22 @@ export default function Landing() {
           <p className="text-xl md:text-2xl mb-12 opacity-90">Join your local Bloc today. The next sweep is happening soon.</p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-            <Button size="lg" variant="secondary" className="w-full sm:w-auto text-lg h-14 px-10 rounded-full shadow-xl hover-elevate text-secondary-foreground bg-secondary" data-testid="btn-bottom-join">
+            <Button
+              size="lg"
+              variant="secondary"
+              className="w-full sm:w-auto text-lg h-14 px-10 rounded-full shadow-xl hover-elevate text-secondary-foreground bg-secondary"
+              data-testid="btn-bottom-join"
+              onClick={() => setJoinOpen(true)}
+            >
               Join the Next Sweep
             </Button>
-            <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg h-14 px-10 rounded-full border-2 border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary transition-colors" data-testid="btn-bottom-start">
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full sm:w-auto text-lg h-14 px-10 rounded-full border-2 border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary transition-colors"
+              data-testid="btn-bottom-start"
+              onClick={() => setStartOpen(true)}
+            >
               Start the Next Sweep
             </Button>
           </div>
@@ -373,9 +521,8 @@ export default function Landing() {
       {/* Footer */}
       <footer className="bg-background py-12 border-t">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="w-6 h-6 text-primary" />
-            <span className="font-display font-bold text-xl tracking-tight">Cartnicity</span>
+          <div className="flex items-center">
+            <img src={logoFull} alt="Cartnicity" className="h-12 object-contain" />
           </div>
           <p className="text-muted-foreground text-sm text-center md:text-left">
             © {new Date().getFullYear()} Cartnicity. A movement, not a marketplace. Proudly Canadian.
