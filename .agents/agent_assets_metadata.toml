@@ -1,0 +1,26 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "jxqerwX245HfmxkG0iLNs"
+uri = "file://artifacts/cartnicity/public/images/hero-community.png"
+type = "image"
+title = "Community market vibrant people"
+
+[[generated]]
+id = "WxEj02JAnXa0S66UNGR9c"
+uri = "file://artifacts/cartnicity/public/images/groceries-box.png"
+type = "image"
+title = "Farm fresh groceries box"
+
+[[generated]]
+id = "T3RS85LV1RTrAqSGb-BWU"
+uri = "file://artifacts/cartnicity/public/images/farmer-partnership.png"
+type = "image"
+title = "Canadian farmer in field"
+
+[[generated]]
+id = "ESWU4RNjF6PwiF2ej8krv"
+uri = "file://artifacts/cartnicity/public/images/community-feast.png"
+type = "image"
+title = "Neighbors sharing food table"
