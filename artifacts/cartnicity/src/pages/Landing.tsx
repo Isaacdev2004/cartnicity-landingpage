@@ -34,6 +34,69 @@ const JOIN_FORM_ID = "4f7a987a-0a4a-4e5f-bc06-2c79b7e14c94";
 const START_FORM_ID = "6f322199-c192-4f19-bfc0-365e1491331c";
 const PORTAL_ID = "148134075";
 
+/** Hide HubSpot marketing footer / logo (submissions still go to HubSpot). */
+function hideHubSpotPromoChrome(root: ParentNode) {
+  root.querySelectorAll?.("a")?.forEach((node) => {
+    if (!(node instanceof HTMLAnchorElement)) return;
+    const href = (node.getAttribute("href") ?? "").trim();
+    const text = (node.textContent ?? "").replace(/\s+/g, " ").trim();
+    const tl = text.toLowerCase();
+
+    let path = "";
+    try {
+      const u = new URL(href, "https://www.hubspot.com");
+      const host = u.hostname.replace(/^www\./, "");
+      if (host !== "hubspot.com") return;
+      path = u.pathname;
+      if (/^\/legal\b/i.test(path)) return;
+    } catch {
+      return;
+    }
+
+    const poweredBy = /powered\s+by/i.test(text) && /hubspot/i.test(tl);
+    const marketingPath =
+      path === "/" ||
+      path === "" ||
+      /^\/(products|crm|marketing|sales|service)\b/i.test(path);
+    const iconOrWordmark =
+      marketingPath && (text.length === 0 || tl === "hubspot" || tl.length < 4);
+    const promoBlurb =
+      marketingPath &&
+      tl.length > 0 &&
+      tl.length < 100 &&
+      /hubspot/i.test(tl) &&
+      /(free|trial|crm|form|create)/i.test(text);
+
+    if (poweredBy || iconOrWordmark || promoBlurb) {
+      const row =
+        node.closest(
+          "[class*='footer'],[class*='Footer'],[class*='branding'],[class*='Branding'],[class*='Powered'],[class*='watermark']",
+        ) ??
+        node.parentElement ??
+        node;
+      (row as HTMLElement).style.setProperty("display", "none", "important");
+    }
+  });
+
+  root.querySelectorAll?.("img")?.forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    const alt = (img.alt ?? "").toLowerCase();
+    if (
+      /hubspot/.test(alt) &&
+      (/logo|powered|brand/.test(alt) || alt.length < 24)
+    ) {
+      const row = img.closest("a,div,span") ?? img;
+      (row as HTMLElement).style.setProperty("display", "none", "important");
+    }
+  });
+
+  root.querySelectorAll?.("*")?.forEach((el) => {
+    if (el instanceof HTMLElement && el.shadowRoot) {
+      hideHubSpotPromoChrome(el.shadowRoot);
+    }
+  });
+}
+
 function HubSpotFormModal({
   open,
   onClose,
@@ -50,14 +113,15 @@ function HubSpotFormModal({
   useEffect(() => {
     if (!open || !containerRef.current) return;
 
-    containerRef.current.innerHTML = "";
+    const container = containerRef.current;
+    container.innerHTML = "";
 
     const div = document.createElement("div");
     div.className = "hs-form-frame";
     div.setAttribute("data-region", "eu1");
     div.setAttribute("data-form-id", formId);
     div.setAttribute("data-portal-id", PORTAL_ID);
-    containerRef.current.appendChild(div);
+    container.appendChild(div);
 
     const existingScript = document.querySelector(
       `script[src="https://js-eu1.hsforms.net/forms/embed/${PORTAL_ID}.js"]`
@@ -65,6 +129,19 @@ function HubSpotFormModal({
     if (existingScript) {
       existingScript.dispatchEvent(new Event("load"));
     }
+
+    const stripBranding = () => hideHubSpotPromoChrome(container);
+    stripBranding();
+    const mo = new MutationObserver(stripBranding);
+    mo.observe(container, { childList: true, subtree: true });
+    const poll = window.setInterval(stripBranding, 400);
+    const stopPoll = window.setTimeout(() => clearInterval(poll), 12_000);
+
+    return () => {
+      mo.disconnect();
+      clearInterval(poll);
+      clearTimeout(stopPoll);
+    };
   }, [open, formId]);
 
   useEffect(() => {
@@ -110,7 +187,10 @@ function HubSpotFormModal({
         </div>
         <h2 className="text-2xl font-display font-bold mb-2">{title}</h2>
         <p className="text-muted-foreground mb-6 text-sm">Fill out the form below and we'll be in touch shortly.</p>
-        <div ref={containerRef} className="min-h-[300px]" />
+        <div
+          ref={containerRef}
+          className="cartnicity-hubspot-modal-host min-h-[300px]"
+        />
       </motion.div>
     </div>
   );
