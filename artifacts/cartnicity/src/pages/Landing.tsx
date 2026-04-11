@@ -1,16 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { 
-  Users, 
-  Leaf, 
-  MapPin, 
-  Truck, 
-  ShieldCheck, 
+import {
+  Users,
+  User,
+  Building2,
+  Leaf,
+  MapPin,
+  Truck,
+  ShieldCheck,
   ArrowRight,
   ChevronRight,
   Star,
   Quote,
-  X
+  X,
+  Sparkles,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logoFull from "@assets/logo_2_1775132861869.png";
@@ -33,6 +37,43 @@ const staggerContainer = {
 const JOIN_FORM_ID = "4f7a987a-0a4a-4e5f-bc06-2c79b7e14c94";
 const START_FORM_ID = "6f322199-c192-4f19-bfc0-365e1491331c";
 const PORTAL_ID = "148134075";
+
+const MEMBERSHIP_HEADLINE =
+  "Lifetime membership for the first 1,000 new members — 300 slots remaining.";
+
+const MEMBERSHIP_BENEFITS = [
+  "Elite membership with hands-on support for families and businesses.",
+  "Costco-level buying power and perks — without paying warehouse membership fees.",
+  "Free founding membership built for community empowerment.",
+] as const;
+
+type MemberType = "family" | "individual" | "business";
+
+const MEMBER_OPTIONS: {
+  id: MemberType;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+}[] = [
+  {
+    id: "family",
+    title: "Family",
+    description: "Households buying together in a bloc.",
+    icon: Users,
+  },
+  {
+    id: "individual",
+    title: "Individual",
+    description: "Solo members joining a local sweep.",
+    icon: User,
+  },
+  {
+    id: "business",
+    title: "Business",
+    description: "Restaurants, caterers & partners.",
+    icon: Building2,
+  },
+];
 
 /** Hide HubSpot marketing footer / logo (submissions still go to HubSpot). */
 function hideHubSpotPromoChrome(root: ParentNode) {
@@ -97,21 +138,17 @@ function hideHubSpotPromoChrome(root: ParentNode) {
   });
 }
 
-function HubSpotFormModal({
-  open,
-  onClose,
+function HubSpotFormEmbed({
   formId,
-  title
+  active,
 }: {
-  open: boolean;
-  onClose: () => void;
   formId: string;
-  title: string;
+  active: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open || !containerRef.current) return;
+    if (!active || !containerRef.current) return;
 
     const container = containerRef.current;
     container.innerHTML = "";
@@ -141,8 +178,42 @@ function HubSpotFormModal({
       mo.disconnect();
       clearInterval(poll);
       clearTimeout(stopPoll);
+      container.innerHTML = "";
     };
-  }, [open, formId]);
+  }, [active, formId]);
+
+  if (!active) return null;
+
+  return (
+    <div
+      ref={containerRef}
+      className="cartnicity-hubspot-modal-host min-h-[300px]"
+    />
+  );
+}
+
+function modalShellClass(wide?: boolean) {
+  return `relative z-10 bg-background rounded-3xl shadow-2xl border w-full ${
+    wide ? "max-w-2xl" : "max-w-xl"
+  } max-h-[90vh] overflow-y-auto p-8`;
+}
+
+function MembershipJoinFlowModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [step, setStep] = useState<"choose" | "form">("choose");
+  const [memberType, setMemberType] = useState<MemberType | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setStep("choose");
+      setMemberType(null);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (open) {
@@ -150,7 +221,145 @@ function HubSpotFormModal({
     } else {
       document.body.style.overflow = "";
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  if (!open) return null;
+
+  const memberLabel =
+    memberType === "family"
+      ? "Family"
+      : memberType === "individual"
+        ? "Individual"
+        : memberType === "business"
+          ? "Business"
+          : "";
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ duration: 0.25 }}
+        className={modalShellClass(true)}
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <img src={logoFull} alt="Cartnicity" className="h-10 object-contain" />
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
+            aria-label="Close"
+            data-testid="btn-close-membership-modal"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {step === "choose" ? (
+          <>
+            <h2 className="text-2xl font-display font-bold mb-3">Get started</h2>
+            <p className="text-muted-foreground text-sm mb-5 leading-relaxed">
+              {MEMBERSHIP_HEADLINE}
+            </p>
+            <ul className="space-y-2.5 mb-8 text-sm text-foreground/90">
+              {MEMBERSHIP_BENEFITS.map((line) => (
+                <li key={line} className="flex gap-2.5">
+                  <Sparkles className="w-4 h-4 shrink-0 text-primary mt-0.5" />
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm font-semibold text-foreground mb-3">
+              Tell us how you&apos;re joining
+            </p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {MEMBER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  data-testid={`btn-member-type-${opt.id}`}
+                  onClick={() => {
+                    setMemberType(opt.id);
+                    setStep("form");
+                  }}
+                  className="flex flex-col items-start text-left rounded-2xl border border-border bg-card p-4 hover:border-primary/50 hover:bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <opt.icon className="w-6 h-6 text-primary mb-3" />
+                  <span className="font-display font-bold text-base mb-1">
+                    {opt.title}
+                  </span>
+                  <span className="text-xs text-muted-foreground leading-snug">
+                    {opt.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setStep("choose");
+                setMemberType(null);
+              }}
+              className="text-sm font-medium text-primary hover:underline mb-4"
+              data-testid="btn-membership-back"
+            >
+              ← Back
+            </button>
+            <h2 className="text-2xl font-display font-bold mb-2">
+              Join the Next Sweep
+            </h2>
+            <p className="text-muted-foreground text-sm mb-1">
+              You&apos;re signing up as{" "}
+              <span className="font-semibold text-foreground">{memberLabel}</span>
+              . Complete the form below — we&apos;ll be in touch shortly.
+            </p>
+            <HubSpotFormEmbed formId={JOIN_FORM_ID} active />
+          </>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+function HubSpotFormModal({
+  open,
+  onClose,
+  formId,
+  title,
+  description = "Fill out the form below and we'll be in touch shortly.",
+}: {
+  open: boolean;
+  onClose: () => void;
+  formId: string;
+  title: string;
+  description?: string;
+}) {
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open]);
 
   if (!open) return null;
@@ -170,13 +379,14 @@ function HubSpotFormModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ duration: 0.25 }}
-        className="relative z-10 bg-background rounded-3xl shadow-2xl border w-full max-w-xl max-h-[90vh] overflow-y-auto p-8"
+        className={modalShellClass()}
       >
         <div className="flex items-center justify-between mb-6">
           <div>
             <img src={logoFull} alt="Cartnicity" className="h-10 object-contain" />
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
             aria-label="Close"
@@ -186,11 +396,8 @@ function HubSpotFormModal({
           </button>
         </div>
         <h2 className="text-2xl font-display font-bold mb-2">{title}</h2>
-        <p className="text-muted-foreground mb-6 text-sm">Fill out the form below and we'll be in touch shortly.</p>
-        <div
-          ref={containerRef}
-          className="cartnicity-hubspot-modal-host min-h-[300px]"
-        />
+        <p className="text-muted-foreground mb-6 text-sm">{description}</p>
+        <HubSpotFormEmbed formId={formId} active={open} />
       </motion.div>
     </div>
   );
@@ -200,17 +407,15 @@ export default function Landing() {
   const { scrollYProgress } = useScroll();
   const yHero = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
 
-  const [joinOpen, setJoinOpen] = useState(false);
+  const [membershipFlowOpen, setMembershipFlowOpen] = useState(false);
   const [startOpen, setStartOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden font-sans">
       {/* Modals */}
-      <HubSpotFormModal
-        open={joinOpen}
-        onClose={() => setJoinOpen(false)}
-        formId={JOIN_FORM_ID}
-        title="Join the Next Sweep"
+      <MembershipJoinFlowModal
+        open={membershipFlowOpen}
+        onClose={() => setMembershipFlowOpen(false)}
       />
       <HubSpotFormModal
         open={startOpen}
@@ -233,10 +438,10 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-4">
             <Button
-              data-testid="btn-join-nav"
-              onClick={() => setJoinOpen(true)}
+              data-testid="btn-get-started-nav"
+              onClick={() => setMembershipFlowOpen(true)}
             >
-              Join the Next Sweep
+              Get Started
             </Button>
           </div>
         </div>
@@ -261,12 +466,15 @@ export default function Landing() {
             variants={staggerContainer}
             className="max-w-4xl mx-auto"
           >
-            <motion.div variants={fadeIn} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 text-accent-foreground font-medium mb-8 border border-accent/20">
+            <motion.div
+              variants={fadeIn}
+              className="inline-flex flex-wrap items-center justify-center gap-2 px-4 py-2 rounded-full bg-accent/10 text-accent-foreground font-medium mb-8 border border-accent/20 max-w-full text-center text-sm sm:text-base"
+            >
               <span className="relative flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
               </span>
-              Lifetime free membership for first 1,000 members (300 slots remaining)
+              {MEMBERSHIP_HEADLINE}
             </motion.div>
             
             <motion.h1 variants={fadeIn} className="text-5xl md:text-7xl font-display font-bold tracking-tight mb-8 text-foreground leading-[1.1]">
@@ -282,7 +490,7 @@ export default function Landing() {
                 size="lg"
                 className="w-full sm:w-auto text-lg h-14 px-8 rounded-full shadow-lg hover-elevate"
                 data-testid="btn-hero-join"
-                onClick={() => setJoinOpen(true)}
+                onClick={() => setMembershipFlowOpen(true)}
               >
                 Join the Next Sweep <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
@@ -384,7 +592,7 @@ export default function Landing() {
               variant="outline"
               className="rounded-full"
               data-testid="btn-view-cities"
-              onClick={() => setJoinOpen(true)}
+              onClick={() => setMembershipFlowOpen(true)}
             >
               View All Active Blocs <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
@@ -404,7 +612,7 @@ export default function Landing() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
                 className={`p-8 rounded-3xl ${bloc.color} flex flex-col justify-between aspect-square hover-elevate cursor-pointer`}
-                onClick={() => setJoinOpen(true)}
+                onClick={() => setMembershipFlowOpen(true)}
                 data-testid={`card-community-${i}`}
               >
                 <div>
@@ -581,7 +789,7 @@ export default function Landing() {
               variant="secondary"
               className="w-full sm:w-auto text-lg h-14 px-10 rounded-full shadow-xl hover-elevate text-secondary-foreground bg-secondary"
               data-testid="btn-bottom-join"
-              onClick={() => setJoinOpen(true)}
+              onClick={() => setMembershipFlowOpen(true)}
             >
               Join the Next Sweep
             </Button>
