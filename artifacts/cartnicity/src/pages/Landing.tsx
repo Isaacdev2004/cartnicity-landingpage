@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logoFull from "@assets/logo_2_1775132861869.png";
+import productsPageBanner from "@assets/products page banner.png";
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -640,9 +641,13 @@ export default function Landing() {
                 initial={{ opacity: 0, x: -50 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                className="relative rounded-3xl overflow-hidden aspect-[4/5] shadow-2xl border"
+                className="relative rounded-3xl overflow-hidden aspect-video shadow-2xl border"
               >
-                <img src="/images/groceries-box.png" alt="Fresh authentic groceries" className="w-full h-full object-cover" />
+                <img
+                  src={productsPageBanner}
+                  alt="Cartnicity products — premium groceries and community buying"
+                  className="w-full h-full object-cover object-center"
+                />
               </motion.div>
               
               <motion.div 
