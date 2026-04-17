@@ -294,3 +294,30 @@
     inset: -1px;
   }
 }
+
+@keyframes cartnicity-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.cartnicity-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: cartnicity-marquee 55s linear infinite;
+}
+
+.cartnicity-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cartnicity-marquee-track {
+    animation: none;
+    transform: none;
+  }
+
+  .cartnicity-marquee-track:hover {
+    animation-play-state: running;
+  }
+}

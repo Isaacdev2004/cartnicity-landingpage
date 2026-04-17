@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import {
   Users,
   User,
   Building2,
-  Leaf,
   MapPin,
   Truck,
   ShieldCheck,
@@ -19,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import logoFull from "@assets/logo_2_1775132861869.png";
 import productsPageBanner from "@assets/products page banner.png";
+import proudlyCanadianBadge from "@assets/proudly-canadian-badge.png";
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -45,10 +45,21 @@ const MEMBERSHIP_HEADLINE =
 const MEMBERSHIP_BENEFITS = [
   "Elite membership with hands-on support for families and businesses.",
   "Costco-level buying power and perks — without paying warehouse membership fees.",
-  "Free founding membership built for community empowerment.",
+  "Canada's foremost culturally intelligent grocery OS — built for community empowerment.",
 ] as const;
 
 type MemberType = "family" | "individual" | "business";
+
+const MARQUEE_ITEMS = [
+  "Canada's foremost culturally intelligent grocery OS",
+  "Bloc sweeps — aggregate demand, unlock wholesale prices",
+  "Ontario farms to your door — authentic ethnic groceries",
+  "Toronto · Brampton · Calgary · Winnipeg",
+  "30%+ average savings when your community buys together",
+  "Next-day delivery · CartnicityPoints · community economics",
+  "Halal & premium cuts negotiated for your bloc",
+  "A movement, not a marketplace — proudly Canadian",
+] as const;
 
 const MEMBER_OPTIONS: {
   id: MemberType;
@@ -404,6 +415,54 @@ function HubSpotFormModal({
   );
 }
 
+function CartnicityStatsMarquee() {
+  const reduceMotion = useReducedMotion();
+
+  if (reduceMotion) {
+    return (
+      <section
+        className="border-t border-primary-foreground/20 bg-primary py-4 text-primary-foreground"
+        aria-label="Cartnicity highlights"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-sm font-medium leading-relaxed text-primary-foreground/95">
+            {MARQUEE_ITEMS.join(" · ")}
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const loop = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS];
+
+  return (
+    <section
+      className="border-t border-primary-foreground/20 bg-primary py-3 text-primary-foreground"
+      aria-label="Cartnicity highlights"
+    >
+      <div className="relative overflow-hidden">
+        <div
+          className="cartnicity-marquee-track items-center gap-x-10 md:gap-x-14 px-4 text-sm font-semibold tracking-wide text-primary-foreground/95"
+          data-testid="marquee-stats-below"
+        >
+          {loop.map((item, i) => (
+            <span
+              key={`${item}-${i}`}
+              className="inline-flex shrink-0 items-center gap-3 whitespace-nowrap"
+            >
+              <span
+                className="size-1.5 shrink-0 rounded-full bg-primary-foreground/70"
+                aria-hidden
+              />
+              {item}
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Landing() {
   const { scrollYProgress } = useScroll();
   const yHero = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
@@ -435,14 +494,27 @@ export default function Landing() {
             <a href="#how-it-works" className="text-sm font-medium hover:text-primary transition-colors">How it Works</a>
             <a href="#communities" className="text-sm font-medium hover:text-primary transition-colors">Communities</a>
             <a href="#products" className="text-sm font-medium hover:text-primary transition-colors">Products</a>
-            <a href="#farmers" className="text-sm font-medium hover:text-primary transition-colors">Farmers</a>
+            <a
+              href="#proudly-canadian"
+              className="inline-flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
+              data-testid="nav-proudly-canadian"
+            >
+              <img
+                src={proudlyCanadianBadge}
+                alt=""
+                width={28}
+                height={28}
+                className="size-7 shrink-0 object-contain"
+              />
+              <span>Proudly Canadian</span>
+            </a>
           </div>
           <div className="flex items-center gap-4">
             <Button
               data-testid="btn-get-started-nav"
               onClick={() => setMembershipFlowOpen(true)}
             >
-              Get Started
+              Get Started for Free
             </Button>
           </div>
         </div>
@@ -533,11 +605,13 @@ export default function Landing() {
         </div>
       </section>
 
+      <CartnicityStatsMarquee />
+
       {/* How it Works */}
       <section id="how-it-works" className="py-24 md:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16 md:mb-24">
-            <h2 className="text-sm font-bold tracking-widest text-secondary uppercase mb-4">The Block Sweep</h2>
+            <h2 className="text-sm font-bold tracking-widest text-secondary uppercase mb-4">The Bloc Sweep</h2>
             <h3 className="text-4xl md:text-5xl font-display font-bold mb-6">How neighbourhood groups unlock wholesale power</h3>
             <p className="text-lg text-muted-foreground">It's simple: we aggregate our grocery lists, approach farmers as a single massive buyer, and pass the savings directly to you.</p>
           </div>
@@ -631,12 +705,12 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Products & Farmers */}
+      {/* Products */}
       <section id="products" className="py-24 md:py-32 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="relative">
-              <div className="absolute inset-0 bg-secondary/10 rounded-full blur-3xl transform -translate-x-1/2 -translate-y-1/2"></div>
+              <div className="pointer-events-none absolute inset-0 bg-secondary/10 rounded-full blur-3xl transform -translate-x-1/2 -translate-y-1/2" />
               <motion.div
                 initial={{ opacity: 0, x: -50 }}
                 whileInView={{ opacity: 1, x: 0 }}
@@ -646,26 +720,36 @@ export default function Landing() {
                 <img
                   src={productsPageBanner}
                   alt="Cartnicity products — premium groceries and community buying"
-                  className="w-full h-full object-cover object-center"
+                  className="h-full w-full object-cover object-center"
                 />
-              </motion.div>
-              
-              <motion.div 
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="absolute -bottom-8 -right-8 md:-right-12 bg-card p-6 rounded-2xl shadow-xl border max-w-xs"
-              >
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                    <Leaf className="w-6 h-6" />
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.05 }}
+                  className="absolute inset-x-3 bottom-3 z-10 sm:inset-x-4 sm:bottom-4 md:left-4 md:right-auto md:max-w-sm"
+                >
+                  <div className="rounded-2xl border bg-card/95 p-4 shadow-xl backdrop-blur-sm sm:p-5 md:p-6">
+                    <div className="mb-3 flex items-center gap-3 sm:mb-4 sm:gap-4">
+                      <img
+                        src={proudlyCanadianBadge}
+                        alt=""
+                        width={48}
+                        height={48}
+                        className="size-12 shrink-0 object-contain sm:size-14"
+                      />
+                      <div className="min-w-0">
+                        <h5 className="font-bold">Proudly Canadian</h5>
+                        <p className="text-xs text-muted-foreground sm:text-sm">
+                          Canadian-built for multicultural communities
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs leading-relaxed text-foreground/90 sm:text-sm">
+                      Cartnicity is rooted in Canada — fair pricing, trusted sourcing, and logistics designed for neighbours who buy together.
+                    </p>
                   </div>
-                  <div>
-                    <h5 className="font-bold">Proudly Canadian</h5>
-                    <p className="text-sm text-muted-foreground">Ontario family farms</p>
-                  </div>
-                </div>
-                <p className="text-sm leading-relaxed">Partnered with trusted multi-generation farms to bring you farm-to-doorstep freshness.</p>
+                </motion.div>
               </motion.div>
             </div>
 
@@ -712,11 +796,26 @@ export default function Landing() {
       </section>
 
       {/* Why Cartnicity */}
-      <section id="farmers" className="py-24 md:py-32 bg-secondary text-secondary-foreground">
+      <section
+        id="proudly-canadian"
+        className="py-24 md:py-32 bg-secondary text-secondary-foreground"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16 md:mb-24">
+            <div className="flex flex-col items-center gap-3 mb-8">
+              <img
+                src={proudlyCanadianBadge}
+                alt="Proudly Canadian seal"
+                width={96}
+                height={96}
+                className="size-24 object-contain drop-shadow-sm"
+              />
+              <p className="text-sm font-bold tracking-[0.2em] uppercase text-secondary-foreground/90">
+                Proudly Canadian
+              </p>
+            </div>
             <h2 className="text-4xl md:text-5xl font-display font-bold mb-6">A movement, not a marketplace.</h2>
-            <p className="text-lg opacity-90">Cartnicity isn't just a delivery app. We're rebuilding community economics from the ground up.</p>
+            <p className="text-lg opacity-90">Cartnicity isn't just a grocery delivery platform. We're rebuilding community economics from the ground up.</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -785,7 +884,9 @@ export default function Landing() {
         </div>
 
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center text-primary-foreground">
-          <h2 className="text-5xl md:text-7xl font-display font-bold mb-8">Ready to bend the market?</h2>
+          <h2 className="text-5xl md:text-7xl font-display font-bold mb-8">
+            Join our community
+          </h2>
           <p className="text-xl md:text-2xl mb-12 opacity-90">Join your local Bloc today. The next sweep is happening soon.</p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
@@ -796,7 +897,7 @@ export default function Landing() {
               data-testid="btn-bottom-join"
               onClick={() => setMembershipFlowOpen(true)}
             >
-              Join the Next Sweep
+              Join our community
             </Button>
             <Button
               size="lg"
