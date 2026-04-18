@@ -36,6 +36,10 @@ const staggerContainer = {
 };
 
 const JOIN_FORM_ID = "4f7a987a-0a4a-4e5f-bc06-2c79b7e14c94";
+/** Optional: HubSpot form with only business fields. If unset, the default join form is embedded and extra fields are hidden in the client. */
+const JOIN_FORM_BUSINESS_ID =
+  (import.meta.env.VITE_HUBSPOT_JOIN_FORM_BUSINESS_ID as string | undefined)?.trim() ||
+  JOIN_FORM_ID;
 const START_FORM_ID = "6f322199-c192-4f19-bfc0-365e1491331c";
 const PORTAL_ID = "148134075";
 
@@ -45,7 +49,7 @@ const MEMBERSHIP_HEADLINE =
 const MEMBERSHIP_BENEFITS = [
   "Elite membership with hands-on support for families and businesses.",
   "Costco-level buying power and perks — without paying warehouse membership fees.",
-  "Canada's foremost culturally intelligent grocery OS — built for community empowerment.",
+  "Canada's foremost culturally intelligent grocery OS — built for community and unbeatable savings.",
 ] as const;
 
 type MemberType = "family" | "individual" | "business";
@@ -150,12 +154,165 @@ function hideHubSpotPromoChrome(root: ParentNode) {
   });
 }
 
+function suppressHubSpotFieldRow(start: Element | null) {
+  let node: Element | null = start;
+  for (let depth = 0; depth < 12 && node; depth++) {
+    const cls = node.className?.toString?.() ?? "";
+    if (
+      /field|row|group|question/i.test(cls) ||
+      node.getAttribute?.("data-field") ||
+      node.tagName === "FIELDSET" ||
+      node.getAttribute?.("role") === "group"
+    ) {
+      const row = node as HTMLElement;
+      row.style.setProperty("display", "none", "important");
+      row.querySelectorAll?.("input, select, textarea").forEach((ctrl) => {
+        ctrl.removeAttribute("required");
+        ctrl.removeAttribute("aria-required");
+      });
+      return;
+    }
+    node = node.parentElement;
+  }
+  if (start instanceof HTMLElement) {
+    start.style.setProperty("display", "none", "important");
+    start.querySelectorAll?.("input, select, textarea").forEach((ctrl) => {
+      ctrl.removeAttribute("required");
+      ctrl.removeAttribute("aria-required");
+    });
+  }
+}
+
+/** Hide Household Size row for Individual sign-ups (same HubSpot form for all paths). */
+function hideHouseholdSizeField(root: ParentNode) {
+
+  const textLooksLikeHouseholdSize = (raw: string) => {
+    const t = raw.replace(/\s+/g, " ").trim().toLowerCase();
+    if (!t) return false;
+    return (
+      (/\bhousehold\b/.test(t) || /\bhoisehold\b/.test(t)) &&
+      /\bsize\b/.test(t)
+    );
+  };
+
+  root.querySelectorAll?.("label, legend, p, span, h3, h4, div")?.forEach((el) => {
+    if (!(el instanceof HTMLElement)) return;
+    if (!textLooksLikeHouseholdSize(el.textContent ?? "")) return;
+    if ((el.textContent ?? "").length > 120) return;
+    suppressHubSpotFieldRow(el);
+  });
+
+  root.querySelectorAll?.("input, select, textarea")?.forEach((el) => {
+    const hint = `${el.getAttribute("name") ?? ""} ${el.getAttribute("id") ?? ""} ${el.getAttribute("aria-label") ?? ""} ${el.getAttribute("placeholder") ?? ""}`.toLowerCase();
+    if (/\bhousehold\b/.test(hint) && /\bsize\b/.test(hint)) {
+      suppressHubSpotFieldRow(el);
+    }
+  });
+
+  root.querySelectorAll?.("*")?.forEach((el) => {
+    if (el instanceof HTMLElement && el.shadowRoot) {
+      hideHouseholdSizeField(el.shadowRoot);
+    }
+  });
+}
+
+/** Business path: only first/last name, email, phone, company, city, state or province (+ legal consent if present). */
+function restrictToBusinessFieldsOnly(root: ParentNode) {
+  const fingerprintForFieldWrapper = (wrapper: HTMLElement) => {
+    const bits: string[] = [];
+    wrapper.querySelectorAll("label").forEach((l) => {
+      bits.push(l.textContent ?? "");
+    });
+    wrapper.querySelectorAll("input, select, textarea").forEach((el) => {
+      bits.push(
+        el.getAttribute("name") ?? "",
+        el.getAttribute("id") ?? "",
+        el.getAttribute("aria-label") ?? "",
+        el.getAttribute("placeholder") ?? "",
+      );
+    });
+    return bits.join(" ").replace(/\s+/g, " ").trim();
+  };
+
+  const isBusinessAllowedFingerprint = (s: string) => {
+    const t = s.toLowerCase();
+    if (
+      /consent|terms|privacy|gdpr|legal|marketing|newsletter|subscribe|communication/.test(
+        t,
+      )
+    ) {
+      return true;
+    }
+    const allowed = [
+      /first[\s_-]*name|firstname|^first$|given[\s_-]*name/i,
+      /last[\s_-]*name|lastname|surname|family[\s_-]*name/i,
+      /\bemail\b|e-mail/i,
+      /phone|telephone|mobile|cell|\btel\b|contact[\s_-]*(number|phone)?/i,
+      /company|organization|organisation|business[\s_-]*name|^company$/i,
+      /\bcity\b|town(ship)?/i,
+      /\bstate\b|\bprovince\b|prov\./i,
+    ];
+    return allowed.some((re) => re.test(t));
+  };
+
+  const findFieldWrapper = (el: Element): HTMLElement | null => {
+    let n: Element | null = el;
+    for (let d = 0; d < 14 && n; d++) {
+      const cls = n.className?.toString?.() ?? "";
+      if (
+        /field|row|group|question|hsfc/i.test(cls) ||
+        n.getAttribute?.("data-field") ||
+        n.tagName === "FIELDSET" ||
+        n.getAttribute?.("role") === "group"
+      ) {
+        return n as HTMLElement;
+      }
+      n = n.parentElement;
+    }
+    return null;
+  };
+
+  const wrappers = new Map<HTMLElement, string>();
+
+  const visit = (node: ParentNode) => {
+    node
+      .querySelectorAll?.(
+        "input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea",
+      )
+      ?.forEach((el) => {
+        const w = findFieldWrapper(el);
+        if (!w) return;
+        const fp = fingerprintForFieldWrapper(w);
+        const prev = wrappers.get(w);
+        if (!prev || fp.length > prev.length) {
+          wrappers.set(w, fp);
+        }
+      });
+
+    node.querySelectorAll?.("*")?.forEach((child) => {
+      if (child instanceof HTMLElement && child.shadowRoot) {
+        visit(child.shadowRoot);
+      }
+    });
+  };
+
+  visit(root);
+
+  wrappers.forEach((fp, wrapper) => {
+    if (!isBusinessAllowedFingerprint(fp)) {
+      suppressHubSpotFieldRow(wrapper);
+    }
+  });
+}
+
 function HubSpotFormEmbed({
   formId,
   active,
+  memberType,
 }: {
   formId: string;
   active: boolean;
+  memberType?: MemberType | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -179,11 +336,22 @@ function HubSpotFormEmbed({
       existingScript.dispatchEvent(new Event("load"));
     }
 
-    const stripBranding = () => hideHubSpotPromoChrome(container);
-    stripBranding();
-    const mo = new MutationObserver(stripBranding);
+    const runAdjustments = () => {
+      hideHubSpotPromoChrome(container);
+      if (memberType === "individual") {
+        hideHouseholdSizeField(container);
+      }
+      if (
+        memberType === "business" &&
+        formId === JOIN_FORM_ID
+      ) {
+        restrictToBusinessFieldsOnly(container);
+      }
+    };
+    runAdjustments();
+    const mo = new MutationObserver(runAdjustments);
     mo.observe(container, { childList: true, subtree: true });
-    const poll = window.setInterval(stripBranding, 400);
+    const poll = window.setInterval(runAdjustments, 400);
     const stopPoll = window.setTimeout(() => clearInterval(poll), 12_000);
 
     return () => {
@@ -192,7 +360,7 @@ function HubSpotFormEmbed({
       clearTimeout(stopPoll);
       container.innerHTML = "";
     };
-  }, [active, formId]);
+  }, [active, formId, memberType]);
 
   if (!active) return null;
 
@@ -342,7 +510,15 @@ function MembershipJoinFlowModal({
               <span className="font-semibold text-foreground">{memberLabel}</span>
               . Complete the form below — we&apos;ll be in touch shortly.
             </p>
-            <HubSpotFormEmbed formId={JOIN_FORM_ID} active />
+            <HubSpotFormEmbed
+              formId={
+                memberType === "business"
+                  ? JOIN_FORM_BUSINESS_ID
+                  : JOIN_FORM_ID
+              }
+              active
+              memberType={memberType}
+            />
           </>
         )}
       </motion.div>
@@ -494,20 +670,6 @@ export default function Landing() {
             <a href="#how-it-works" className="text-sm font-medium hover:text-primary transition-colors">How it Works</a>
             <a href="#communities" className="text-sm font-medium hover:text-primary transition-colors">Communities</a>
             <a href="#products" className="text-sm font-medium hover:text-primary transition-colors">Products</a>
-            <a
-              href="#proudly-canadian"
-              className="inline-flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
-              data-testid="nav-proudly-canadian"
-            >
-              <img
-                src={proudlyCanadianBadge}
-                alt=""
-                width={28}
-                height={28}
-                className="size-7 shrink-0 object-contain"
-              />
-              <span>Proudly Canadian</span>
-            </a>
           </div>
           <div className="flex items-center gap-4">
             <Button
@@ -555,7 +717,7 @@ export default function Landing() {
             </motion.h1>
             
             <motion.p variants={fadeIn} className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-              Join 5,000+ immigrants across Canada aggregating demand to negotiate wholesale prices directly with Ontario farmers. Save 30%+ on authentic ethnic groceries.
+              Join 5000+ members across Canada aggregating demand to negotiate wholesale prices directly with Ontario farmers. Save up to 30%+ on authentic ethnic groceries.
             </motion.p>
             
             <motion.div variants={fadeIn} className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -709,47 +871,47 @@ export default function Landing() {
       <section id="products" className="py-24 md:py-32 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div className="relative">
-              <div className="pointer-events-none absolute inset-0 bg-secondary/10 rounded-full blur-3xl transform -translate-x-1/2 -translate-y-1/2" />
-              <motion.div
-                initial={{ opacity: 0, x: -50 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                className="relative rounded-3xl overflow-hidden aspect-video shadow-2xl border"
-              >
-                <img
-                  src={productsPageBanner}
-                  alt="Cartnicity products — premium groceries and community buying"
-                  className="h-full w-full object-cover object-center"
-                />
+            <div className="flex flex-col gap-4">
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-0 bg-secondary/10 rounded-full blur-3xl transform -translate-x-1/2 -translate-y-1/2" />
                 <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, x: -50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: 0.05 }}
-                  className="absolute inset-x-3 bottom-3 z-10 sm:inset-x-4 sm:bottom-4 md:left-4 md:right-auto md:max-w-sm"
+                  className="relative rounded-3xl overflow-hidden aspect-video shadow-2xl border"
                 >
-                  <div className="rounded-2xl border bg-card/95 p-4 shadow-xl backdrop-blur-sm sm:p-5 md:p-6">
-                    <div className="mb-3 flex items-center gap-3 sm:mb-4 sm:gap-4">
-                      <img
-                        src={proudlyCanadianBadge}
-                        alt=""
-                        width={48}
-                        height={48}
-                        className="size-12 shrink-0 object-contain sm:size-14"
-                      />
-                      <div className="min-w-0">
-                        <h5 className="font-bold">Proudly Canadian</h5>
-                        <p className="text-xs text-muted-foreground sm:text-sm">
-                          Canadian-built for multicultural communities
-                        </p>
-                      </div>
-                    </div>
-                    <p className="text-xs leading-relaxed text-foreground/90 sm:text-sm">
-                      Cartnicity is rooted in Canada — fair pricing, trusted sourcing, and logistics designed for neighbours who buy together.
+                  <img
+                    src={productsPageBanner}
+                    alt="Cartnicity products — premium groceries and community buying"
+                    className="h-full w-full object-cover object-center"
+                  />
+                </motion.div>
+              </div>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.05 }}
+                className="relative rounded-2xl border bg-card p-4 shadow-lg sm:p-5 md:p-6"
+              >
+                <div className="mb-3 flex items-center gap-3 sm:mb-4 sm:gap-4">
+                  <img
+                    src={proudlyCanadianBadge}
+                    alt=""
+                    width={48}
+                    height={48}
+                    className="size-12 shrink-0 object-contain sm:size-14"
+                  />
+                  <div className="min-w-0">
+                    <h5 className="font-bold">Proudly Canadian</h5>
+                    <p className="text-xs text-muted-foreground sm:text-sm">
+                      Canadian-built for multicultural communities
                     </p>
                   </div>
-                </motion.div>
+                </div>
+                <p className="text-xs leading-relaxed text-foreground/90 sm:text-sm">
+                  Cartnicity is rooted in Canada — fair pricing, trusted sourcing, and logistics designed for neighbours who buy together.
+                </p>
               </motion.div>
             </div>
 
@@ -820,10 +982,26 @@ export default function Landing() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
-              { title: "Built for Culture", desc: "Designed specifically for multicultural communities and their unique grocery needs." },
-              { title: "Price Control", desc: "By buying together, we dictate terms instead of accepting whatever supermarkets charge." },
-              { title: "Smart Logistics", desc: "Efficient next-day delivery straight from farm to your doorstep." },
-              { title: "Circular Rewards", desc: "Earn CartnicityPoints redeemable across other community-owned businesses." }
+              {
+                superheader: "Cultural Intelligence",
+                title: "Built for Culture",
+                desc: "Designed specifically for multicultural communities and their unique grocery needs.",
+              },
+              {
+                superheader: "Market Maker Authority",
+                title: "Price Control",
+                desc: "By buying together, we dictate terms instead of accepting whatever supermarkets charge.",
+              },
+              {
+                superheader: "Elite Membership",
+                title: "Cartnicity Elites",
+                desc: "Own your food economy with insider access to better pricing, priority delivery, and exclusive inventory — before the market moves.",
+              },
+              {
+                superheader: "Loyalty",
+                title: "Circular Rewards",
+                desc: "Earn CartnicityPoints redeemable across other community-owned businesses.",
+              },
             ].map((feature, i) => (
               <motion.div 
                 key={i}
@@ -833,6 +1011,11 @@ export default function Landing() {
                 transition={{ delay: i * 0.1 }}
                 className="bg-secondary-foreground/10 p-8 rounded-3xl backdrop-blur-sm border border-secondary-foreground/20 hover:bg-secondary-foreground/20 transition-colors"
               >
+                {"superheader" in feature && feature.superheader ? (
+                  <p className="text-xs font-bold tracking-[0.2em] uppercase text-secondary-foreground/80 mb-3">
+                    {feature.superheader}
+                  </p>
+                ) : null}
                 <h4 className="text-xl font-bold mb-3">{feature.title}</h4>
                 <p className="opacity-80 leading-relaxed">{feature.desc}</p>
               </motion.div>
