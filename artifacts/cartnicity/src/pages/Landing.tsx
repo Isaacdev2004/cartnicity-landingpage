@@ -36,10 +36,10 @@ const staggerContainer = {
 };
 
 const JOIN_FORM_ID = "4f7a987a-0a4a-4e5f-bc06-2c79b7e14c94";
-/** Optional: HubSpot form with only business fields. If unset, the default join form is embedded and extra fields are hidden in the client. */
+/** HubSpot business signup form (eu1). Override with VITE_HUBSPOT_JOIN_FORM_BUSINESS_ID if needed. */
 const JOIN_FORM_BUSINESS_ID =
   (import.meta.env.VITE_HUBSPOT_JOIN_FORM_BUSINESS_ID as string | undefined)?.trim() ||
-  JOIN_FORM_ID;
+  "cf2da5d5-997a-45d6-87c3-f3b8a542201d";
 const START_FORM_ID = "6f322199-c192-4f19-bfc0-365e1491331c";
 const PORTAL_ID = "148134075";
 
