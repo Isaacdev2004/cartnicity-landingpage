@@ -35,7 +35,12 @@ const staggerContainer = {
   }
 };
 
+/** HubSpot family / default join form (eu1). */
 const JOIN_FORM_ID = "4f7a987a-0a4a-4e5f-bc06-2c79b7e14c94";
+/** HubSpot individual signup form (eu1). Override with VITE_HUBSPOT_JOIN_FORM_INDIVIDUAL_ID if needed. */
+const JOIN_FORM_INDIVIDUAL_ID =
+  (import.meta.env.VITE_HUBSPOT_JOIN_FORM_INDIVIDUAL_ID as string | undefined)?.trim() ||
+  "3d8a380d-81ed-4508-969a-392cee53cdeb";
 /** HubSpot business signup form (eu1). Override with VITE_HUBSPOT_JOIN_FORM_BUSINESS_ID if needed. */
 const JOIN_FORM_BUSINESS_ID =
   (import.meta.env.VITE_HUBSPOT_JOIN_FORM_BUSINESS_ID as string | undefined)?.trim() ||
@@ -338,7 +343,10 @@ function HubSpotFormEmbed({
 
     const runAdjustments = () => {
       hideHubSpotPromoChrome(container);
-      if (memberType === "individual") {
+      if (
+        memberType === "individual" &&
+        formId === JOIN_FORM_ID
+      ) {
         hideHouseholdSizeField(container);
       }
       if (
@@ -514,7 +522,9 @@ function MembershipJoinFlowModal({
               formId={
                 memberType === "business"
                   ? JOIN_FORM_BUSINESS_ID
-                  : JOIN_FORM_ID
+                  : memberType === "individual"
+                    ? JOIN_FORM_INDIVIDUAL_ID
+                    : JOIN_FORM_ID
               }
               active
               memberType={memberType}
