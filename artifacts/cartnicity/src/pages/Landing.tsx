@@ -20,6 +20,10 @@ import logoFull from "@assets/logo_2_1775132861869.png";
 import productsPageBanner from "@assets/products page banner.png";
 import proudlyCanadianBadge from "@assets/proudly-canadian-badge.png";
 
+/** Public `public/` paths — respect Vite `base` (e.g. /get-started/ on cartnicity.com/get-started/) */
+const publicFile = (path: string) =>
+  `${import.meta.env.BASE_URL}${path.replace(/^\//, "")}`;
+
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
@@ -697,7 +701,7 @@ export default function Landing() {
         <div className="absolute inset-0 z-0">
           <motion.img 
             style={{ y: yHero }}
-            src="/images/hero-community.png" 
+            src={publicFile("images/hero-community.png")}
             alt="Vibrant multicultural community market" 
             className="w-full h-full object-cover opacity-20 dark:opacity-30 mix-blend-multiply"
           />
@@ -1069,7 +1073,7 @@ export default function Landing() {
       <section className="relative py-32 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img 
-            src="/images/community-feast.png" 
+            src={publicFile("images/community-feast.png")}
             alt="Community feast" 
             className="w-full h-full object-cover opacity-30 dark:opacity-40"
           />
